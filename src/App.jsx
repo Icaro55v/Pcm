@@ -9,13 +9,13 @@ import {
   Download, ChevronDown, ChevronUp, MoreHorizontal,
   RefreshCw, FileText, ArrowUpRight, ArrowDownRight, X,
   Factory, Upload, FileSpreadsheet, DollarSign, Calendar, AlertCircle, Briefcase,
-  Lightbulb, CheckCircle2, TrendingUp, Star, ShieldCheck, ShieldAlert, Scale, User, LogOut, Lock, UserPlus
+  Lightbulb, CheckCircle2, TrendingUp, Star, ShieldCheck, ShieldAlert, Scale, User, LogOut, Lock, UserPlus, Trash2
 } from 'lucide-react';
 
 // --- FIREBASE IMPORTS (REALTIME DATABASE & AUTH) ---
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
-import { getDatabase, ref, get, child, update, push } from 'firebase/database';
+import { getDatabase, ref, get, child, update, push, remove } from 'firebase/database';
 
 // --- CONFIGURAÇÃO FIREBASE (PROJETO ALMOX) ---
 const firebaseConfig = {
@@ -355,6 +355,25 @@ export default function EcoTermoEnterprise() {
     }
   };
 
+  // --- NOVA FUNÇÃO: LIMPAR BANCO DE DADOS ---
+  const handleClearDatabase = async () => {
+    const confirmDelete = window.confirm("ATENÇÃO: Tem a certeza que deseja APAGAR TODOS OS DADOS do sistema? Esta ação é irreversível.");
+    
+    if (confirmDelete) {
+      setIsProcessing(true);
+      try {
+        await remove(ref(db, 'assets'));
+        setAssetData([]); // Limpa estado local
+        alert('Base de dados limpa com sucesso.');
+      } catch (error) {
+        console.error("Erro ao limpar:", error);
+        alert('Erro ao tentar limpar a base de dados. Verifique as permissões.');
+      } finally {
+        setIsProcessing(false);
+      }
+    }
+  };
+
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -634,6 +653,12 @@ export default function EcoTermoEnterprise() {
           <button onClick={exportToPowerBI} className="w-full bg-transparent border border-[#008200] hover:bg-[#004d1f] text-emerald-400 hover:text-white py-2.5 px-4 rounded font-medium text-xs flex items-center justify-center gap-2 transition-colors">
             <Download size={14} />
             <span className="hidden lg:block">Exportar Dados</span>
+          </button>
+
+          {/* BOTÃO LIMPAR DADOS */}
+          <button onClick={handleClearDatabase} className="w-full bg-red-900/40 hover:bg-red-900/60 border border-red-800/50 text-red-200 py-2.5 px-4 rounded font-medium text-xs flex items-center justify-center gap-2 transition-colors">
+            <Trash2 size={14} />
+            <span className="hidden lg:block">Limpar Base de Dados</span>
           </button>
 
           <button onClick={handleLogout} className="w-full mt-2 bg-red-900/30 hover:bg-red-900/50 text-red-200 py-2 px-4 rounded text-xs flex items-center justify-center gap-2 transition-colors">
