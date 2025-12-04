@@ -13,85 +13,27 @@ import {
   Plus, Edit, Eye, Printer, Share2, BarChart3, Clock, MapPin, Linkedin, Headphones, Save, XCircle, History, ArrowRightLeft, ArrowRight, RotateCcw
 } from 'lucide-react';
 
-// --- FIREBASE IMPORTS (FIRESTORE) ---
+// --- FIREBASE IMPORTS (REALTIME DATABASE) ---
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged, signOut } from 'firebase/auth';
-import { getFirestore, collection, getDocs, doc, setDoc, addDoc, deleteDoc, writeBatch, query, orderBy } from 'firebase/firestore';
+import { getAuth, signInWithEmailAndPassword, signInAnonymously, onAuthStateChanged, signOut, createUserWithEmailAndPassword } from 'firebase/auth';
+import { getDatabase, ref, onValue, set, push, remove, update, get } from 'firebase/database';
 
-// --- CONFIGURAÇÃO E SANITIZAÇÃO DO AMBIENTE ---
-
-// Função segura para obter variáveis de ambiente (sem eval)
-const getEnvVar = (key, fallback) => {
-  if (typeof window !== 'undefined' && window[key]) {
-    return window[key];
-  }
-  return fallback;
+// --- SUA CONFIGURAÇÃO FIREBASE ---
+const firebaseConfig = {
+  apiKey: "AIzaSyCqIzWpvyn_q41-HhgOFtefmyBEpbLkJhU",
+  authDomain: "projeto-almox-48819.firebaseapp.com",
+  databaseURL: "https://projeto-almox-48819-default-rtdb.firebaseio.com",
+  projectId: "projeto-almox-48819",
+  storageBucket: "projeto-almox-48819.firebasestorage.app",
+  messagingSenderId: "604367180658",
+  appId: "1:604367180658:web:ab32ef3990a3d55f8083eb",
+  measurementId: "G-THDGMNQLE9"
 };
 
-const rawAppId = getEnvVar('__app_id', 'ecotermo-default');
-const appId = typeof rawAppId === 'string' ? rawAppId.replace(/[^a-zA-Z0-9_-]/g, '_') : 'ecotermo-default';
-
-const rawFirebaseConfig = getEnvVar('__firebase_config', '{}');
-let firebaseConfig = {};
-
-try {
-  firebaseConfig = typeof rawFirebaseConfig === 'string' ? JSON.parse(rawFirebaseConfig) : rawFirebaseConfig;
-} catch (e) {
-  console.error("Erro ao fazer parse da config do Firebase:", e);
-}
-
-// Inicialização segura do Firebase
-let app = null;
-let auth = null;
-let db = null;
-let isFirebaseInitialized = false;
-
-try {
-  if (firebaseConfig && Object.keys(firebaseConfig).length > 0 && firebaseConfig.apiKey) {
-    app = initializeApp(firebaseConfig);
-    auth = getAuth(app);
-    db = getFirestore(app);
-    isFirebaseInitialized = true;
-  } else {
-    console.warn("Configuração do Firebase ausente ou inválida. Iniciando em modo offline/demo.");
-  }
-} catch (e) {
-  console.error("Erro crítico ao inicializar Firebase:", e);
-}
-
-// --- DADOS DE EXEMPLO (MOCK) ---
-const generateMockData = (count) => {
-  const modelos = ['NT250', 'T15 BFWC', 'NT150', 'S62-BRS10', 'M10M-BASE', 'FRONT-10 RM', 'NX25'];
-  const aplicacoes = ['RESFRIADOR DE MOSTO', 'ÁGUA DESAERADA', 'RESFRIADOR DE CERVEJA', 'RESFRIADOR DE ÁGUA', 'AQUECEDOR DE SODA', 'AQUECEDOR AGUA DESAERADA', 'TROCADOR DE CIP SODA', 'TROCADOR LEVEDURA'];
-  const areas = ['Processo 01', 'Processo 02', 'Utilidades', 'Adega'];
-  
-  return Array.from({ length: count }, (_, i) => {
-    const modelo = modelos[Math.floor(Math.random() * modelos.length)];
-    const area = areas[Math.floor(Math.random() * areas.length)];
-    const aplicacao = aplicacoes[Math.floor(Math.random() * aplicacoes.length)];
-    const dias = Math.floor(Math.random() * 12) + 1;
-    let status = 'operational';
-    if (dias > 6) status = 'warning';
-    if (dias > 9) status = 'alert';
-    const baseEff = 98 - (dias * 2.5); 
-    const efficiency = Math.max(40, baseEff + (Math.random() * 5));
-
-    return {
-      id: `mock-${Date.now()}-${i}`,
-      numero: i + 1,
-      modelo: modelo,
-      qtdPlacas: Math.floor(Math.random() * 400) + 15,
-      aplicacao: aplicacao,
-      area: area,
-      tagSerial: i % 2 === 0 ? `KVN ${30 + i}/23.044-${i}` : `30.${100 + i}-78.735`,
-      dias: dias,
-      material: 'OK',
-      ultimaManut: new Date(2025, Math.floor(Math.random() * 11), Math.floor(Math.random() * 28) + 1).toLocaleDateString('pt-BR'),
-      status: status,
-      efficiency: parseFloat(efficiency.toFixed(1))
-    };
-  });
-};
+// Inicialização
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getDatabase(app);
 
 const COLORS = {
   primary: '#008200', 
@@ -125,32 +67,19 @@ const Badge = ({ status, text, type = 'status' }) => {
   }
   let styleClass = "bg-slate-100 text-slate-600 border-slate-200";
   let label = (text !== undefined && text !== null) ? String(text) : "N/A";
-  
   if (status === 'operational') { styleClass = "bg-emerald-50 text-[#008200] border-emerald-200"; label = "OK"; }
   if (status === 'alert') { styleClass = "bg-red-50 text-red-700 border-red-200"; label = "CRÍTICO"; }
   if (status === 'warning') { styleClass = "bg-amber-50 text-amber-700 border-amber-200"; label = "ATENÇÃO"; }
-  
   if (String(text).toUpperCase() === 'OK') { styleClass = "bg-emerald-50 text-[#008200] border-emerald-200"; }
-  
-  return (
-    <span className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-wider border ${styleClass} uppercase inline-flex items-center justify-center min-w-[60px]`}>{label}</span>
-  );
+  return <span className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-wider border ${styleClass} uppercase inline-flex items-center justify-center min-w-[60px]`}>{label}</span>;
 };
 
 const KPICard = ({ title, value, subtext, icon: Icon, trend, color, onClick, isActive }) => (
-  <div 
-    onClick={onClick}
-    className={`bg-white p-6 rounded-xl border transition-all cursor-pointer relative overflow-hidden group
-      ${isActive ? 'border-[#008200] ring-1 ring-[#008200] shadow-md' : 'border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-1'}
-    `}
-  >
+  <div onClick={onClick} className={`bg-white p-6 rounded-xl border transition-all cursor-pointer relative overflow-hidden group ${isActive ? 'border-[#008200] ring-1 ring-[#008200] shadow-md' : 'border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-1'}`}>
     <div className={`absolute top-0 right-0 w-24 h-24 -mr-8 -mt-8 rounded-full opacity-10 transition-transform group-hover:scale-110 ${color.replace('text-', 'bg-')}`}></div>
-    
     <div className="relative z-10">
       <div className="flex justify-between items-start mb-4">
-        <div className={`p-3 rounded-lg ${color.replace('text-', 'bg-').replace('600', '50').replace('500', '50')} ${color}`}>
-          <Icon size={24} strokeWidth={2} />
-        </div>
+        <div className={`p-3 rounded-lg ${color.replace('text-', 'bg-').replace('600', '50').replace('500', '50')} ${color}`}><Icon size={24} strokeWidth={2} /></div>
         {trend && (
           <div className={`flex items-center text-xs font-bold ${trend === 'up' ? 'text-[#008200]' : trend === 'down' ? 'text-red-600' : 'text-slate-400'}`}>
             {trend === 'up' ? <ArrowUpRight size={14}/> : trend === 'down' ? <ArrowDownRight size={14}/> : null}
@@ -158,7 +87,6 @@ const KPICard = ({ title, value, subtext, icon: Icon, trend, color, onClick, isA
           </div>
         )}
       </div>
-      
       <h3 className="text-3xl font-bold text-slate-800 tracking-tight mb-1">{value}</h3>
       <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{title}</p>
       <p className="text-xs text-slate-500 mt-2 font-medium">{subtext}</p>
@@ -166,7 +94,7 @@ const KPICard = ({ title, value, subtext, icon: Icon, trend, color, onClick, isA
   </div>
 );
 
-// --- LOGIN ---
+// --- LOGIN SCREEN ---
 const LoginScreen = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -176,30 +104,24 @@ const LoginScreen = ({ onLogin }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-
-    // Modo Demo/Offline se Firebase falhar
-    if (!isFirebaseInitialized) {
-      setTimeout(() => {
-        onLogin({ email: email || 'demo@admin.com', uid: 'demo-uid', isAnonymous: true });
-        setLoading(false);
-      }, 800);
-      return;
-    }
-
     try {
-      const initialToken = getEnvVar('__initial_auth_token', null);
-      if (initialToken) {
-        await signInWithCustomToken(auth, initialToken);
+      let userCredential;
+      if (isRegistering) {
+        userCredential = await createUserWithEmailAndPassword(auth, email, password);
       } else {
-        await signInAnonymously(auth);
+        userCredential = await signInWithEmailAndPassword(auth, email, password);
       }
+      // Sucesso - o onAuthStateChanged no App vai pegar a mudança
     } catch (err) {
       console.error("Auth Error:", err);
-      try {
-         await signInAnonymously(auth);
-      } catch (anonErr) {
-         // Fallback final para demo se auth anônima falhar
-         onLogin({ email: email || 'offline@admin.com', uid: 'offline-uid', isAnonymous: true });
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+          alert("E-mail ou senha incorretos.");
+      } else if (err.code === 'auth/email-already-in-use') {
+          alert("Este e-mail já está cadastrado.");
+      } else if (err.code === 'auth/weak-password') {
+          alert("A senha deve ter pelo menos 6 caracteres.");
+      } else {
+          alert("Erro ao autenticar: " + err.message);
       }
     } finally { 
       setLoading(false); 
@@ -247,7 +169,6 @@ const LoginScreen = ({ onLogin }) => {
           </button>
         </div>
 
-        {/* FOOTER DISCRETO E PROFISSIONAL */}
         <div className="mt-10 pt-6 border-t border-slate-100 w-full flex justify-between items-center text-[10px] text-slate-400 font-medium">
            <a href="https://www.linkedin.com/in/7icaaro" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:text-[#0077b5] transition-colors group">
              <Linkedin size={12} className="text-slate-300 group-hover:text-[#0077b5] transition-colors" /> 
@@ -288,80 +209,70 @@ export default function EcoTermoEnterprise() {
   };
   const removeToast = (id) => setToasts(prev => prev.filter(t => t.id !== id));
 
-  // --- FIRESTORE HELPERS ---
-  const getAssetsCollection = (uid) => isFirebaseInitialized ? collection(db, 'artifacts', appId, 'users', uid, 'assets') : null;
-  const getHistoryCollection = (uid) => isFirebaseInitialized ? collection(db, 'artifacts', appId, 'users', uid, 'history') : null;
-
-  // --- DATA LOADING & HISTORY ---
-  const fetchHistory = async (uid) => {
-    if (!uid || !isFirebaseInitialized) return;
-    try {
-      const snap = await getDocs(getHistoryCollection(uid));
-      const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => b.timestamp - a.timestamp);
-      setHistoryList(list);
-    } catch(e) { console.error("Erro history", e); }
-  };
+  // --- REALTIME DATABASE PATHS ---
+  // Usamos caminhos baseados no UID do usuário para segurança e separação
+  const getAssetsRef = (uid) => ref(db, `users/${uid}/assets`);
+  const getHistoryRef = (uid) => ref(db, `users/${uid}/history`);
 
   useEffect(() => {
-    // Se não inicializou, para o loading e aguarda login manual (demo)
-    if (!isFirebaseInitialized) {
-        setLoading(false);
-        return;
-    }
-
-    const initAuth = async () => {
-        try {
-            const initialToken = getEnvVar('__initial_auth_token', null);
-            if (initialToken) {
-                await signInWithCustomToken(auth, initialToken);
-            } else {
-                await signInAnonymously(auth);
-            }
-        } catch (e) {
-            console.error("Auth falhou", e);
-            await signInAnonymously(auth).catch(err => console.error("Auth anônima falhou", err));
-        }
-    };
-    initAuth();
-
-    const unsub = onAuthStateChanged(auth, async (u) => {
+    const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
-      if (u) {
-        try {
-          const snap = await getDocs(getAssetsCollection(u.uid));
-          if (!snap.empty) {
-             const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-             setAssetData(list);
-          } else {
-             const mocks = generateMockData(20);
-             setAssetData(mocks);
-          }
-          await fetchHistory(u.uid); 
-        } catch(e) {
-          console.error("Erro ao buscar dados", e);
-          setAssetData(generateMockData(20));
-        }
-      }
       setLoading(false);
     });
     return () => unsub();
   }, []);
 
-  // --- ACTIONS ---
-  const handleSaveAsset = async (asset) => {
-    // Modo Demo
-    if (!isFirebaseInitialized) {
-        setAssetData(prev => prev.map(a => a.id === asset.id ? asset : a));
-        setSelectedAsset(null);
-        addToast('Sucesso (Demo)', 'Alteração salva localmente.', 'success');
+  // --- LISTENER DE DADOS EM TEMPO REAL ---
+  useEffect(() => {
+    if (!user) {
+        setAssetData([]);
+        setHistoryList([]);
         return;
     }
 
+    // 1. Listener para Ativos
+    const assetsRef = getAssetsRef(user.uid);
+    const unsubAssets = onValue(assetsRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            // Converter objeto {key: val} para array
+            const list = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+            setAssetData(list);
+        } else {
+            setAssetData([]);
+        }
+    }, (error) => {
+        console.error("Erro ao ler ativos:", error);
+    });
+
+    // 2. Listener para Histórico
+    const historyRef = getHistoryRef(user.uid);
+    const unsubHistory = onValue(historyRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+             const list = Object.keys(data)
+                .map(key => ({ id: key, ...data[key] }))
+                .sort((a, b) => b.timestamp - a.timestamp);
+             setHistoryList(list);
+        } else {
+            setHistoryList([]);
+        }
+    }, (error) => {
+        console.error("Erro ao ler histórico:", error);
+    });
+
+    return () => {
+        unsubAssets();
+        unsubHistory();
+    };
+  }, [user]);
+
+  // --- ACTIONS ---
+  const handleSaveAsset = async (asset) => {
     if (!user) return;
     try {
-      const docRef = doc(getAssetsCollection(user.uid), asset.id);
-      await setDoc(docRef, asset);
-      setAssetData(prev => prev.map(a => a.id === asset.id ? asset : a));
+      const assetRef = child(getAssetsRef(user.uid), asset.id);
+      await update(assetRef, asset);
       setSelectedAsset(null);
       addToast('Sucesso', 'Ativo atualizado com sucesso!', 'success');
     } catch (e) {
@@ -372,17 +283,9 @@ export default function EcoTermoEnterprise() {
 
   const handleDeleteAsset = async (assetId) => {
     if (!user || !window.confirm("Tem certeza que deseja excluir este ativo permanentemente?")) return;
-    
-    if (!isFirebaseInitialized) {
-        setAssetData(prev => prev.filter(a => a.id !== assetId));
-        setSelectedAsset(null);
-        addToast('Excluído (Demo)', 'Ativo removido localmente.', 'success');
-        return;
-    }
-
     try {
-      await deleteDoc(doc(getAssetsCollection(user.uid), assetId));
-      setAssetData(prev => prev.filter(a => a.id !== assetId));
+      const assetRef = child(getAssetsRef(user.uid), assetId);
+      await remove(assetRef);
       setSelectedAsset(null);
       addToast('Excluído', 'Ativo removido da base de dados.', 'success');
     } catch (e) {
@@ -394,14 +297,9 @@ export default function EcoTermoEnterprise() {
   // --- HISTORY ACTIONS ---
   const handleDeleteHistory = async (historyId) => {
     if (!user || !window.confirm("Deseja apagar este backup do histórico?")) return;
-    if (!isFirebaseInitialized) {
-        setHistoryList(prev => prev.filter(h => h.id !== historyId));
-        addToast('Sucesso (Demo)', 'Backup removido localmente.', 'success');
-        return;
-    }
     try {
-      await deleteDoc(doc(getHistoryCollection(user.uid), historyId));
-      setHistoryList(prev => prev.filter(h => h.id !== historyId));
+      const histRef = child(getHistoryRef(user.uid), historyId);
+      await remove(histRef);
       addToast('Sucesso', 'Backup removido.', 'success');
     } catch (e) {
       addToast('Erro', 'Não foi possível apagar o backup.', 'error');
@@ -411,64 +309,28 @@ export default function EcoTermoEnterprise() {
   const handleRestoreHistory = async (historyItem) => {
     if (!user || !window.confirm(`ATENÇÃO: Isso irá substituir TODOS os dados atuais pelos dados do backup de ${historyItem.date}. Deseja continuar?`)) return;
     
-    if (!isFirebaseInitialized) {
-        setAssetData(historyItem.data || []);
-        addToast('Restaurado (Demo)', 'Dados revertidos localmente.', 'success');
-        setActiveView('dashboard');
-        return;
-    }
-    
     try {
-      setLoading(true);
-      const chunkSize = 400; 
-      const currentSnap = await getDocs(getAssetsCollection(user.uid));
+      // 1. Substituir dados atuais pelos do histórico
+      // No Realtime Database, um 'set' na raiz substitui tudo que está lá
+      const assetsRef = getAssetsRef(user.uid);
       
-      let batch = writeBatch(db);
-      let counter = 0;
-      const batches = [];
+      // Converter array de volta para objeto para salvar no RTDB
+      const restoredDataObj = {};
+      if (historyItem.data && Array.isArray(historyItem.data)) {
+          historyItem.data.forEach(item => {
+              // Usa o ID original ou gera um novo se não tiver
+              const key = item.id || push(assetsRef).key;
+              restoredDataObj[key] = { ...item, id: key };
+          });
+      }
 
-      currentSnap.forEach((doc) => {
-        batch.delete(doc.ref);
-        counter++;
-        if (counter >= chunkSize) {
-          batches.push(batch.commit());
-          batch = writeBatch(db);
-          counter = 0;
-        }
-      });
-      if (counter > 0) batches.push(batch.commit());
-      await Promise.all(batches);
-      
-      const restoredData = historyItem.data || [];
-      batch = writeBatch(db);
-      counter = 0;
-      const insertBatches = [];
-
-      restoredData.forEach((item) => {
-        const newRef = doc(getAssetsCollection(user.uid)); 
-        batch.set(newRef, { ...item, id: newRef.id });
-        counter++;
-        if (counter >= chunkSize) {
-          insertBatches.push(batch.commit());
-          batch = writeBatch(db);
-          counter = 0;
-        }
-      });
-      if (counter > 0) insertBatches.push(batch.commit());
-
-      await Promise.all(insertBatches);
-      
-      const newSnap = await getDocs(getAssetsCollection(user.uid));
-      const list = newSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setAssetData(list);
+      await set(assetsRef, restoredDataObj);
       
       addToast('Restaurado', 'Sistema revertido com sucesso.', 'success');
       setActiveView('dashboard');
     } catch (e) {
       console.error("Restore error:", e);
       addToast('Erro', 'Falha crítica ao restaurar backup.', 'error');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -546,7 +408,7 @@ export default function EcoTermoEnterprise() {
     return { total, critical, warning, operational, avgEff, advancedChartData, pieData };
   }, [areaData, selectedArea]);
 
-  // --- UPLOAD LOGIC ---
+  // --- UPLOAD LOGIC (REALTIME DATABASE) ---
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -556,31 +418,22 @@ export default function EcoTermoEnterprise() {
       const lines = text.split('\n').filter(line => line.trim() !== '');
       if (lines.length < 2) { addToast("Aviso", "Arquivo vazio ou inválido.", "error"); return; }
       
-      // Modo Demo
-      if (!isFirebaseInitialized) {
-          // Lógica de parser (simplificada) para demo
-          // ...
-          addToast("Demo", "Dados carregados localmente (sem persistência).", "warning");
-          // Você pode adicionar a lógica de parser aqui similar ao bloco abaixo se quiser que o demo leia CSV
-          return;
-      }
-
       if (!user) return;
 
       try {
         setLoading(true);
         
-        // 1. Backup
+        // 1. Backup do estado atual
         if (assetData.length > 0) {
             const timestamp = Date.now();
-            await addDoc(getHistoryCollection(user.uid), {
-            timestamp,
-            date: new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR'),
-            user: user.isAnonymous ? 'Admin (Auto)' : user.email,
-            totalAssets: assetData.length,
-            data: assetData 
+            const historyRef = child(getHistoryRef(user.uid), `${timestamp}`);
+            await set(historyRef, {
+                timestamp,
+                date: new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR'),
+                user: user.email,
+                totalAssets: assetData.length,
+                data: assetData 
             });
-            await fetchHistory(user.uid); 
             addToast('Backup', 'Versão anterior salva no histórico.', 'success');
         }
 
@@ -601,7 +454,9 @@ export default function EcoTermoEnterprise() {
             efficiency: headers.findIndex(h => h.includes('eficiencia') || h.includes('eficiência'))
         };
 
-        const itemsToAdd = [];
+        // Prepara objeto para salvar tudo de uma vez
+        const newAssetsData = {};
+        
         for (let i = 1; i < lines.length; i++) {
             const cols = lines[i].split(separator);
             if (cols.length < 2) continue;
@@ -618,7 +473,11 @@ export default function EcoTermoEnterprise() {
                 if (!isNaN(parsedEff)) efficiency = parsedEff;
             }
 
-            itemsToAdd.push({
+            // Gera ID único
+            const newKey = push(getAssetsRef(user.uid)).key;
+            
+            newAssetsData[newKey] = {
+                id: newKey,
                 numero: idx.numero > -1 ? (cols[idx.numero]?.trim() || i) : i,
                 modelo: idx.modelo > -1 ? (cols[idx.modelo]?.trim() || '-') : '-',
                 qtdPlacas: idx.qtdPlacas > -1 ? (cols[idx.qtdPlacas]?.trim() || '0') : '0',
@@ -631,49 +490,13 @@ export default function EcoTermoEnterprise() {
                 status: status,
                 efficiency: efficiency,
                 importedAt: new Date().toISOString()
-            });
+            };
         }
 
-        // 3. Batch Write
-        const chunkSize = 400;
-        const currentSnap = await getDocs(getAssetsCollection(user.uid));
-        let batch = writeBatch(db);
-        let counter = 0;
-        const batches = [];
+        // 3. Substituição Total (Overwrite)
+        const assetsRef = getAssetsRef(user.uid);
+        await set(assetsRef, newAssetsData);
 
-        currentSnap.forEach((doc) => {
-            batch.delete(doc.ref);
-            counter++;
-            if (counter >= chunkSize) {
-            batches.push(batch.commit());
-            batch = writeBatch(db);
-            counter = 0;
-            }
-        });
-        if (counter > 0) batches.push(batch.commit());
-        await Promise.all(batches);
-
-        batch = writeBatch(db);
-        counter = 0;
-        const insertBatches = [];
-        const newData = [];
-
-        itemsToAdd.forEach(item => {
-            const newRef = doc(getAssetsCollection(user.uid));
-            const itemWithId = { ...item, id: newRef.id };
-            batch.set(newRef, itemWithId);
-            newData.push(itemWithId);
-            counter++;
-            if (counter >= chunkSize) {
-                insertBatches.push(batch.commit());
-                batch = writeBatch(db);
-                counter = 0;
-            }
-        });
-        if (counter > 0) insertBatches.push(batch.commit());
-        await Promise.all(insertBatches);
-
-        setAssetData(newData);
         addToast('Importação', 'Novos dados carregados com sucesso!', 'success');
 
       } catch (e) {
@@ -688,7 +511,7 @@ export default function EcoTermoEnterprise() {
   };
 
   if (loading) return <div className="h-screen flex items-center justify-center bg-slate-50 text-[#008200]"><RefreshCw className="animate-spin" /></div>;
-  if (!user) return <LoginScreen onLogin={setUser} />; // Passar setUser para permitir login manual
+  if (!user) return <LoginScreen onLogin={setUser} />;
 
   return (
     <div className="flex h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden">
