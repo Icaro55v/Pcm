@@ -24,13 +24,17 @@ const appId = rawAppId.replace(/[^a-zA-Z0-9_-]/g, '_');
 
 const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
 
-if (Object.keys(firebaseConfig).length === 0) {
-  console.warn("Firebase config not found in environment.");
+// Prevenção de crash inicial se config estiver vazia
+let app, auth, db;
+try {
+  if (Object.keys(firebaseConfig).length > 0) {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
+  }
+} catch (e) {
+  console.error("Erro ao inicializar Firebase:", e);
 }
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
 
 // --- DADOS DE EXEMPLO ---
 const generateMockData = (count) => {
@@ -134,6 +138,7 @@ const LoginScreen = ({ onLogin }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!auth) { alert("Erro: Firebase não inicializado."); return; }
     setLoading(true);
     try {
       if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -226,7 +231,7 @@ export default function EcoTermoEnterprise() {
 
   // --- DATA LOADING & HISTORY ---
   const fetchHistory = async (uid) => {
-    if (!uid) return;
+    if (!uid || !db) return;
     try {
       const snap = await getDocs(getHistoryCollection(uid));
       const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => b.timestamp - a.timestamp);
@@ -235,6 +240,11 @@ export default function EcoTermoEnterprise() {
   };
 
   useEffect(() => {
+    if (!auth) {
+        setLoading(false);
+        return;
+    }
+
     const initAuth = async () => {
         try {
             if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -318,10 +328,9 @@ export default function EcoTermoEnterprise() {
     
     try {
       setLoading(true);
-      const chunkSize = 400; // Limite do Firestore é 500
+      const chunkSize = 400; 
       const currentSnap = await getDocs(getAssetsCollection(user.uid));
       
-      // 1. Apagar todos os dados atuais em lotes
       let batch = writeBatch(db);
       let counter = 0;
       const batches = [];
@@ -336,11 +345,8 @@ export default function EcoTermoEnterprise() {
         }
       });
       if (counter > 0) batches.push(batch.commit());
-
-      // Aguardar deleção completa
       await Promise.all(batches);
       
-      // 2. Inserir dados do backup em lotes
       const restoredData = historyItem.data || [];
       batch = writeBatch(db);
       counter = 0;
@@ -360,7 +366,6 @@ export default function EcoTermoEnterprise() {
 
       await Promise.all(insertBatches);
       
-      // Atualizar estado local
       const newSnap = await getDocs(getAssetsCollection(user.uid));
       const list = newSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setAssetData(list);
@@ -447,7 +452,7 @@ export default function EcoTermoEnterprise() {
     return { total, critical, warning, operational, avgEff, advancedChartData, pieData };
   }, [areaData, selectedArea]);
 
-  // --- UPLOAD DE CSV (COM BATCHING) ---
+  // --- UPLOAD LOGIC ---
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -476,7 +481,7 @@ export default function EcoTermoEnterprise() {
             addToast('Backup', 'Versão anterior salva no histórico.', 'success');
         }
 
-        // 2. Parser & Preparação
+        // 2. Parser
         const separator = lines[0].includes(';') ? ';' : ',';
         const headers = lines[0].split(separator).map(h => h.trim().toLowerCase());
         
@@ -526,14 +531,13 @@ export default function EcoTermoEnterprise() {
             });
         }
 
-        // 3. Limpeza e Escrita em Lotes (Batching)
+        // 3. Batch Write
         const chunkSize = 400;
         const currentSnap = await getDocs(getAssetsCollection(user.uid));
         let batch = writeBatch(db);
         let counter = 0;
         const batches = [];
 
-        // Delete Loop
         currentSnap.forEach((doc) => {
             batch.delete(doc.ref);
             counter++;
@@ -546,7 +550,6 @@ export default function EcoTermoEnterprise() {
         if (counter > 0) batches.push(batch.commit());
         await Promise.all(batches);
 
-        // Insert Loop
         batch = writeBatch(db);
         counter = 0;
         const insertBatches = [];
@@ -1030,7 +1033,7 @@ export default function EcoTermoEnterprise() {
                     <tr>
                       <th className="p-4 w-1/3">Equipamento (Tag / Série)</th>
                       <th className="p-4 text-center w-1/4 bg-slate-50">Versão Anterior</th>
-                      <th className="p-4 text-center w-1/12"><ArrowRightIcon size={14} className="mx-auto text-slate-300"/></th>
+                      <th className="p-4 text-center w-1/12"><ArrowRight size={14} className="mx-auto text-slate-300"/></th>
                       <th className="p-4 text-center w-1/4 bg-slate-50">Versão Atual</th>
                     </tr>
                   </thead>
