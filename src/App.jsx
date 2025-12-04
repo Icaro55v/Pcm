@@ -16,7 +16,28 @@ import {
 // --- FIREBASE IMPORTS (REALTIME DATABASE) ---
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, signInAnonymously, onAuthStateChanged, signOut, createUserWithEmailAndPassword } from 'firebase/auth';
-import { getDatabase, ref, onValue, set, push, remove, update, get } from 'firebase/database';
+import { getDatabase, ref, onValue, set, push, remove, update, child } from 'firebase/database';
+
+// --- DADOS DE EXEMPLO (CARREGADOS INICIALMENTE) ---
+const DEMO_DATA = [
+  { id: 'demo-1', numero: '1', modelo: 'NT250', qtdPlacas: '505', aplicacao: 'RESFRIADOR DE MOSTO', area: 'Processo 01', tagSerial: 'KVN 30/23.044-01', dias: 6, material: 'OK', ultimaManut: '07/04/2025', status: 'operational', efficiency: 95 },
+  { id: 'demo-2', numero: '2', modelo: 'T15 BFWC', qtdPlacas: '250', aplicacao: 'ÁGUA DESAERADA', area: 'Processo 01', tagSerial: '30.125-78.735', dias: 3, material: 'OK', ultimaManut: '16/09/2025', status: 'operational', efficiency: 98 },
+  { id: 'demo-3', numero: '3', modelo: 'NT150', qtdPlacas: '326', aplicacao: 'ÁGUA DESAERADA', area: 'Processo 01', tagSerial: '2129419', dias: 4, material: 'OK', ultimaManut: '11/04/2025', status: 'operational', efficiency: 96 },
+  { id: 'demo-4', numero: '4', modelo: 'S62-BRS10', qtdPlacas: '210', aplicacao: 'RESFRIADOR DE CERVEJA', area: 'Processo 01', tagSerial: 'ICP-103.19.0498', dias: 3, material: 'OK', ultimaManut: '11/04/2025', status: 'operational', efficiency: 97 },
+  { id: 'demo-5', numero: '5', modelo: 'T15 BFWC', qtdPlacas: '250', aplicacao: 'RESFRIADOR DE ÁGUA', area: 'Processo 01', tagSerial: '30.125-78.735', dias: 3, material: 'OK', ultimaManut: '20/02/2025', status: 'operational', efficiency: 98 },
+  { id: 'demo-6', numero: '6', modelo: 'M10M-BASE', qtdPlacas: '33', aplicacao: 'AQUECEDOR DE SODA', area: 'Processo 02', tagSerial: '30.112-30.151', dias: 1, material: 'OK', ultimaManut: '16/02/2025', status: 'operational', efficiency: 99 },
+  { id: 'demo-7', numero: '7', modelo: 'M10M-BASE', qtdPlacas: '15', aplicacao: 'AQUECEDOR DE SODA', area: 'Processo 02', tagSerial: '30.112-30.152', dias: 1, material: 'OK', ultimaManut: '17/02/2025', status: 'operational', efficiency: 99 },
+  { id: 'demo-8', numero: '8', modelo: 'FRONT-10 RM', qtdPlacas: '235', aplicacao: 'AQUECEDOR AGUA DESAERADA', area: 'Processo 02', tagSerial: '30.107-13.432', dias: 3, material: 'OK', ultimaManut: '25/03/2025', status: 'operational', efficiency: 95 },
+  { id: 'demo-9', numero: '9', modelo: 'NT250', qtdPlacas: '505', aplicacao: 'RESFRIADOR DE MOSTO', area: 'Processo 02', tagSerial: 'KVN 30/23.044-01', dias: 6, material: 'OK', ultimaManut: '07/04/2025', status: 'warning', efficiency: 80 },
+  { id: 'demo-10', numero: '10', modelo: 'S62-BRS10', qtdPlacas: '210', aplicacao: 'RESFRIADOR DE CERVEJA', area: 'Processo 02', tagSerial: 'ICP-103.19.0497', dias: 3, material: 'OK', ultimaManut: '17/02/2025', status: 'operational', efficiency: 97 },
+  { id: 'demo-11', numero: '11', modelo: 'M10M-BASE', qtdPlacas: '26', aplicacao: 'TROCADOR DE CIP SODA', area: 'Processo 02', tagSerial: 'S/N', dias: 1, material: 'OK', ultimaManut: '25/03/2025', status: 'operational', efficiency: 99 },
+  { id: 'demo-12', numero: '12', modelo: 'M10M-BASE', qtdPlacas: '26', aplicacao: 'TROCADOR DE CIP FILTRO KG', area: 'Processo 02', tagSerial: '30.106-86.120', dias: 1, material: 'OK', ultimaManut: '25/03/2025', status: 'operational', efficiency: 99 },
+  { id: 'demo-13', numero: '13', modelo: 'T15 BFWC', qtdPlacas: '250', aplicacao: 'RESFRIADOR DE ÁGUA', area: 'Processo 02', tagSerial: '30.125-78.732', dias: 3, material: 'OK', ultimaManut: '24/09/2025', status: 'operational', efficiency: 98 },
+  { id: 'demo-14', numero: '14', modelo: 'M10M-BASE', qtdPlacas: '253', aplicacao: 'TROCADOR LEVEDURA', area: 'Processo 02', tagSerial: '30.112-30.150', dias: 2, material: 'OK', ultimaManut: '22/02/2025', status: 'operational', efficiency: 97 },
+  { id: 'demo-15', numero: '15', modelo: 'T15 BFWC', qtdPlacas: '250', aplicacao: 'ÁGUA DESAERADA', area: 'Processo 02', tagSerial: '30.125-78.734', dias: 3, material: 'OK', ultimaManut: '24/02/2025', status: 'operational', efficiency: 98 },
+  { id: 'demo-16', numero: '16', modelo: 'NT50', qtdPlacas: '50', aplicacao: 'LEVEDURA', area: 'Processo 02', tagSerial: '-', dias: 1, material: 'OK', ultimaManut: '26/02/2025', status: 'operational', efficiency: 99 },
+  { id: 'demo-17', numero: '17', modelo: 'MX25', qtdPlacas: '220', aplicacao: 'PFADUKO', area: 'Processo 02', tagSerial: '-', dias: 4, material: 'OK', ultimaManut: '29/09/2025', status: 'operational', efficiency: 96 }
+];
 
 // --- SUA CONFIGURAÇÃO FIREBASE ---
 const firebaseConfig = {
@@ -43,10 +64,10 @@ const COLORS = {
 
 // --- TOAST NOTIFICATION COMPONENT ---
 const ToastContainer = ({ toasts, removeToast }) => (
-  <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 pointer-events-none">
+  <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 pointer-events-none print:hidden">
     {toasts.map((t) => (
-      <div key={t.id} className={`pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-lg shadow-xl border-l-4 transform transition-all duration-300 animate-in slide-in-from-right-10 bg-white ${t.type === 'error' ? 'border-red-500 text-red-800' : 'border-[#008200] text-slate-800'}`}>
-        {t.type === 'success' ? <CheckCircle2 size={20} className="text-[#008200]" /> : <AlertCircle size={20} className="text-red-500" />}
+      <div key={t.id} className={`pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-lg shadow-xl border-l-4 transform transition-all duration-300 animate-in slide-in-from-right-10 bg-white ${t.type === 'error' ? 'border-red-500 text-red-800' : t.type === 'warning' ? 'border-amber-500 text-amber-800' : 'border-[#008200] text-slate-800'}`}>
+        {t.type === 'success' ? <CheckCircle2 size={20} className="text-[#008200]" /> : t.type === 'warning' ? <AlertTriangle size={20} className="text-amber-500" /> : <AlertCircle size={20} className="text-red-500" />}
         <div>
           <h4 className="font-bold text-sm">{t.title}</h4>
           <p className="text-xs opacity-90">{t.message}</p>
@@ -56,6 +77,32 @@ const ToastContainer = ({ toasts, removeToast }) => (
     ))}
   </div>
 );
+
+// --- MODAL DE CONFIRMAÇÃO (Substituto para window.confirm) ---
+const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm m-4 transform transition-all scale-100">
+        <div className="flex flex-col items-center text-center mb-6">
+          <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center text-amber-600 mb-4">
+            <AlertTriangle size={24} />
+          </div>
+          <h3 className="text-lg font-bold text-slate-800">{title}</h3>
+          <p className="text-sm text-slate-500 mt-2">{message}</p>
+        </div>
+        <div className="flex gap-3">
+          <button onClick={onCancel} className="flex-1 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg font-bold text-sm hover:bg-slate-50 transition-colors">
+            Cancelar
+          </button>
+          <button onClick={onConfirm} className="flex-1 px-4 py-2 bg-[#008200] text-white rounded-lg font-bold text-sm hover:bg-[#006000] shadow-lg shadow-emerald-900/20 transition-colors">
+            Confirmar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // --- COMPONENTES VISUAIS ---
 const Badge = ({ status, text, type = 'status' }) => {
@@ -100,29 +147,33 @@ const LoginScreen = ({ onLogin }) => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [errorMsg, setErrorMsg] = useState(''); // Estado para mensagem de erro na tela
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setErrorMsg(''); // Limpa erros anteriores
+    const cleanEmail = email.trim(); 
+
     try {
-      let userCredential;
       if (isRegistering) {
-        userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await createUserWithEmailAndPassword(auth, cleanEmail, password);
       } else {
-        userCredential = await signInWithEmailAndPassword(auth, email, password);
+        await signInWithEmailAndPassword(auth, cleanEmail, password);
       }
-      // Sucesso - o onAuthStateChanged no App vai pegar a mudança
     } catch (err) {
       console.error("Auth Error:", err);
-      if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-          alert("E-mail ou senha incorretos.");
-      } else if (err.code === 'auth/email-already-in-use') {
-          alert("Este e-mail já está cadastrado.");
-      } else if (err.code === 'auth/weak-password') {
-          alert("A senha deve ter pelo menos 6 caracteres.");
-      } else {
-          alert("Erro ao autenticar: " + err.message);
+      
+      let msg = "Erro ao autenticar.";
+      if (err.code === 'auth/invalid-email') msg = "E-mail inválido. Verifique espaços ou erros.";
+      else if (err.code === 'auth/email-already-in-use') {
+          msg = "Este e-mail já existe. Redirecionando para login...";
+          setTimeout(() => setIsRegistering(false), 2000);
       }
+      else if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') msg = "Credenciais incorretas.";
+      else if (err.code === 'auth/weak-password') msg = "Senha muito fraca (mínimo 6 caracteres).";
+      
+      setErrorMsg(msg);
     } finally { 
       setLoading(false); 
     }
@@ -155,6 +206,13 @@ const LoginScreen = ({ onLogin }) => {
               <input type="password" value={password} onChange={e=>setPassword(e.target.value)} className="w-full pl-10 p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-[#008200] outline-none transition-all" placeholder="••••••••" required />
             </div>
           </div>
+          
+          {errorMsg && (
+            <div className="text-red-500 text-xs font-bold bg-red-50 p-2 rounded border border-red-100 flex items-center gap-2">
+               <AlertCircle size={14} /> {errorMsg}
+            </div>
+          )}
+
           <button type="submit" disabled={loading} className="w-full bg-[#008200] hover:bg-[#006000] text-white p-4 rounded-lg font-bold text-sm transition-all shadow-lg shadow-emerald-900/20 mt-4 uppercase">
             {loading ? <RefreshCw className="animate-spin mx-auto" size={20}/> : (isRegistering ? 'CRIAR CONTA' : 'ENTRAR NO SISTEMA')}
           </button>
@@ -162,7 +220,7 @@ const LoginScreen = ({ onLogin }) => {
 
         <div className="mt-6 w-full text-center">
           <button 
-            onClick={() => setIsRegistering(!isRegistering)}
+            onClick={() => { setIsRegistering(!isRegistering); setErrorMsg(''); }}
             className="text-xs text-slate-500 hover:text-[#008200] font-semibold transition-colors uppercase tracking-wide"
           >
             {isRegistering ? 'Já tem uma conta? Fazer Login' : 'Não tem conta? Criar Conta'}
@@ -170,12 +228,11 @@ const LoginScreen = ({ onLogin }) => {
         </div>
 
         <div className="mt-10 pt-6 border-t border-slate-100 w-full flex justify-between items-center text-[10px] text-slate-400 font-medium">
-           <a href="https://www.linkedin.com/in/7icaaro" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:text-[#0077b5] transition-colors group">
-             <Linkedin size={12} className="text-slate-300 group-hover:text-[#0077b5] transition-colors" /> 
-             <span>Developer Icaro</span>
-           </a>
-           <span className="flex items-center gap-1.5 hover:text-slate-600 cursor-pointer transition-colors">
-             <Headphones size={12} className="text-slate-300" /> Suporte Contatar
+           <span className="flex items-center gap-1.5 text-slate-300">
+             <Linkedin size={12} /> Developer Icaro
+           </span>
+           <span className="flex items-center gap-1.5 text-slate-300">
+             <Headphones size={12} /> Suporte
            </span>
         </div>
       </div>
@@ -194,6 +251,9 @@ export default function EcoTermoEnterprise() {
   const [selectedAsset, setSelectedAsset] = useState(null); 
   const [toasts, setToasts] = useState([]);
   
+  // -- CONFIRMATION MODAL STATE --
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
+
   // -- HISTORY STATES --
   const [historyList, setHistoryList] = useState([]);
   const [compareData, setCompareData] = useState(null); 
@@ -210,7 +270,6 @@ export default function EcoTermoEnterprise() {
   const removeToast = (id) => setToasts(prev => prev.filter(t => t.id !== id));
 
   // --- REALTIME DATABASE PATHS ---
-  // Usamos caminhos baseados no UID do usuário para segurança e separação
   const getAssetsRef = (uid) => ref(db, `users/${uid}/assets`);
   const getHistoryRef = (uid) => ref(db, `users/${uid}/history`);
 
@@ -235,11 +294,10 @@ export default function EcoTermoEnterprise() {
     const unsubAssets = onValue(assetsRef, (snapshot) => {
         const data = snapshot.val();
         if (data) {
-            // Converter objeto {key: val} para array
             const list = Object.keys(data).map(key => ({ id: key, ...data[key] }));
             setAssetData(list);
         } else {
-            setAssetData([]);
+            setAssetData(DEMO_DATA); // Visualização inicial se vazio
         }
     }, (error) => {
         console.error("Erro ao ler ativos:", error);
@@ -271,18 +329,67 @@ export default function EcoTermoEnterprise() {
   const handleSaveAsset = async (asset) => {
     if (!user) return;
     try {
-      const assetRef = child(getAssetsRef(user.uid), asset.id);
-      await update(assetRef, asset);
+      const isDemo = String(asset.id).startsWith('demo-');
+      
+      if (isDemo) {
+         // Verifica se estamos em "Modo Demo" (todos os dados locais são demo)
+         const isDemoMode = assetData.every(d => String(d.id).startsWith('demo-'));
+
+         if (isDemoMode) {
+             // SALVA TUDO: Converte todos os itens demo para itens reais no banco de uma vez
+             // Isso evita que o restante da lista suma ao editar um único item
+             const updates = {};
+             assetData.forEach(d => {
+                 const newRef = push(getAssetsRef(user.uid));
+                 // Se for o item editado, usa os novos dados; senão, usa o original do demo
+                 const itemToSave = d.id === asset.id ? asset : d;
+                 
+                 const { id, ...cleanItem } = itemToSave; // Remove ID demo
+                 updates[newRef.key] = { ...cleanItem, id: newRef.key };
+             });
+             
+             await update(getAssetsRef(user.uid), updates);
+             addToast('Inicializado', 'Banco de dados criado com os dados de exemplo!', 'success');
+         } else {
+             // Caso raro: Adiciona apenas um novo se já houver dados misturados
+             const newRef = push(getAssetsRef(user.uid));
+             const { id, ...cleanItem } = asset;
+             await set(newRef, { ...cleanItem, id: newRef.key });
+             addToast('Sucesso', 'Novo ativo criado!', 'success');
+         }
+      } else {
+         const assetRef = child(getAssetsRef(user.uid), asset.id);
+         await update(assetRef, asset);
+         addToast('Sucesso', 'Ativo atualizado!', 'success');
+      }
+      
       setSelectedAsset(null);
-      addToast('Sucesso', 'Ativo atualizado com sucesso!', 'success');
     } catch (e) {
       console.error(e);
       addToast('Erro', 'Falha ao salvar alterações.', 'error');
     }
   };
 
+  const requestDeleteAsset = (assetId) => {
+    setConfirmModal({
+        isOpen: true,
+        title: 'Excluir Ativo',
+        message: 'Tem certeza que deseja excluir este ativo permanentemente? Esta ação não pode ser desfeita.',
+        onConfirm: () => handleDeleteAsset(assetId)
+    });
+  };
+
   const handleDeleteAsset = async (assetId) => {
-    if (!user || !window.confirm("Tem certeza que deseja excluir este ativo permanentemente?")) return;
+    setConfirmModal({ ...confirmModal, isOpen: false }); // Fecha modal
+    
+    if (String(assetId).startsWith('demo-')) {
+        setAssetData(prev => prev.filter(d => d.id !== assetId));
+        setSelectedAsset(null);
+        addToast('Excluído', 'Item de exemplo removido.', 'success');
+        return;
+    }
+
+    if (!user) return;
     try {
       const assetRef = child(getAssetsRef(user.uid), assetId);
       await remove(assetRef);
@@ -295,43 +402,53 @@ export default function EcoTermoEnterprise() {
   };
 
   // --- HISTORY ACTIONS ---
-  const handleDeleteHistory = async (historyId) => {
-    if (!user || !window.confirm("Deseja apagar este backup do histórico?")) return;
-    try {
-      const histRef = child(getHistoryRef(user.uid), historyId);
-      await remove(histRef);
-      addToast('Sucesso', 'Backup removido.', 'success');
-    } catch (e) {
-      addToast('Erro', 'Não foi possível apagar o backup.', 'error');
-    }
+  const requestDeleteHistory = (historyId) => {
+      setConfirmModal({
+          isOpen: true,
+          title: 'Apagar Backup',
+          message: 'Deseja remover este ponto de restauração do histórico?',
+          onConfirm: async () => {
+              setConfirmModal({ ...confirmModal, isOpen: false });
+              if (!user) return;
+              try {
+                const histRef = child(getHistoryRef(user.uid), historyId);
+                await remove(histRef);
+                addToast('Sucesso', 'Backup removido.', 'success');
+              } catch (e) {
+                addToast('Erro', 'Não foi possível apagar o backup.', 'error');
+              }
+          }
+      });
   };
 
-  const handleRestoreHistory = async (historyItem) => {
-    if (!user || !window.confirm(`ATENÇÃO: Isso irá substituir TODOS os dados atuais pelos dados do backup de ${historyItem.date}. Deseja continuar?`)) return;
-    
-    try {
-      // 1. Substituir dados atuais pelos do histórico
-      // No Realtime Database, um 'set' na raiz substitui tudo que está lá
-      const assetsRef = getAssetsRef(user.uid);
-      
-      // Converter array de volta para objeto para salvar no RTDB
-      const restoredDataObj = {};
-      if (historyItem.data && Array.isArray(historyItem.data)) {
-          historyItem.data.forEach(item => {
-              // Usa o ID original ou gera um novo se não tiver
-              const key = item.id || push(assetsRef).key;
-              restoredDataObj[key] = { ...item, id: key };
-          });
-      }
-
-      await set(assetsRef, restoredDataObj);
-      
-      addToast('Restaurado', 'Sistema revertido com sucesso.', 'success');
-      setActiveView('dashboard');
-    } catch (e) {
-      console.error("Restore error:", e);
-      addToast('Erro', 'Falha crítica ao restaurar backup.', 'error');
-    }
+  const requestRestoreHistory = (historyItem) => {
+      setConfirmModal({
+          isOpen: true,
+          title: 'Restaurar Backup',
+          message: `ATENÇÃO: Isso substituirá TODOS os dados atuais pelos do backup de ${historyItem.date}. Continuar?`,
+          onConfirm: async () => {
+              setConfirmModal({ ...confirmModal, isOpen: false });
+              if (!user) return;
+              try {
+                const assetsRef = getAssetsRef(user.uid);
+                const restoredDataObj = {};
+                if (historyItem.data && Array.isArray(historyItem.data)) {
+                    historyItem.data.forEach(item => {
+                        const rawId = item.id || push(assetsRef).key;
+                        // Garante IDs novos se for demo antigo
+                        const key = String(rawId).startsWith('demo-') ? push(assetsRef).key : rawId;
+                        restoredDataObj[key] = { ...item, id: key };
+                    });
+                }
+                await set(assetsRef, restoredDataObj);
+                addToast('Restaurado', 'Sistema revertido com sucesso.', 'success');
+                setActiveView('dashboard');
+              } catch (e) {
+                console.error("Restore error:", e);
+                addToast('Erro', 'Falha ao restaurar backup.', 'error');
+              }
+          }
+      });
   };
 
   const handleCompare = (historyItem) => {
@@ -346,6 +463,53 @@ export default function EcoTermoEnterprise() {
     setCompareData(null);
     setOnlyDifferences(false);
   };
+
+  // --- EXPORTAR CSV ---
+  const handleExportCSV = () => {
+    if (!assetData || assetData.length === 0) {
+      addToast('Aviso', 'Não há dados para exportar.', 'warning');
+      return;
+    }
+
+    try {
+      const headers = ['N°', 'Modelo', 'Qtd Placas', 'Aplicação', 'Área', 'Tag/Série', 'Dias', 'Material', 'Última Manut.', 'Status', 'Eficiência'];
+
+      const csvContent = [
+        headers.join(';'), 
+        ...assetData.map(item => [
+          item.numero,
+          item.modelo,
+          item.qtdPlacas,
+          item.aplicacao,
+          item.area,
+          item.tagSerial,
+          item.dias,
+          item.material,
+          item.ultimaManut,
+          item.status === 'operational' ? 'OK' : item.status === 'warning' ? 'ATENÇÃO' : 'CRÍTICO',
+          item.efficiency
+        ].map(val => {
+          const str = String(val || '');
+          return `"${str.replace(/"/g, '""')}"`; 
+        }).join(';'))
+      ].join('\n');
+
+      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `relatorio_ecotermo_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      addToast('Exportação', 'Planilha gerada com sucesso!', 'success');
+    } catch (error) {
+      console.error("Erro ao exportar:", error);
+      addToast('Erro', 'Falha ao gerar planilha.', 'error');
+    }
+  };
+
 
   // --- FILTROS E CÁLCULOS ---
   const uniqueAreas = useMemo(() => {
@@ -380,7 +544,6 @@ export default function EcoTermoEnterprise() {
     const grouping = {};
     areaData.forEach(d => {
        const keySource = selectedArea === 'Todas' ? (d.area || 'Indefinido') : (d.tagSerial || 'S/N');
-       // Proteção para split
        const key = String(keySource).split('/')[0]; 
        
        if (!grouping[key]) grouping[key] = { name: key, efficiency: 0, days: 0, count: 0 };
@@ -408,116 +571,175 @@ export default function EcoTermoEnterprise() {
     return { total, critical, warning, operational, avgEff, advancedChartData, pieData };
   }, [areaData, selectedArea]);
 
-  // --- UPLOAD LOGIC (REALTIME DATABASE) ---
+  // --- UPLOAD LOGIC ---
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    
     const reader = new FileReader();
     reader.onload = async (event) => {
-      const text = event.target.result;
-      const lines = text.split('\n').filter(line => line.trim() !== '');
-      if (lines.length < 2) { addToast("Aviso", "Arquivo vazio ou inválido.", "error"); return; }
-      
-      if (!user) return;
-
       try {
-        setLoading(true);
+        const text = event.target.result;
+        const lines = text.split(/\r\n|\n/).filter(line => line.trim() !== '');
         
-        // 1. Backup do estado atual
+        if (lines.length < 2) { 
+          addToast("Aviso", "O arquivo parece vazio ou inválido.", "error"); 
+          return; 
+        }
+        
+        if (!user) {
+          addToast("Erro", "Você precisa estar logado para importar.", "error");
+          return;
+        }
+
+        setLoading(true);
+
+        const firstLine = lines[0];
+        const separator = firstLine.includes(';') ? ';' : ',';
+        const cleanHeader = (h) => h.replace(/['"]+/g, '').trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const headersRaw = firstLine.split(separator);
+        const headers = headersRaw.map(cleanHeader);
+        const findIdx = (terms) => headers.findIndex(h => terms.some(term => h.includes(term)));
+        
+        const idx = {
+            numero: findIdx(['n.', 'num', 'no.', 'numero']),
+            modelo: findIdx(['modelo', 'model']),
+            qtdPlacas: findIdx(['placa', 'plate']),
+            aplicacao: findIdx(['aplicacao', 'app']),
+            area: findIdx(['area', 'setor']),
+            tagSerial: findIdx(['tag', 'serie', 'serial', 'equipamento']),
+            dias: findIdx(['dias', 'day', 'tempo']),
+            material: findIdx(['material', 'mat']),
+            ultimaManut: findIdx(['ultima', 'manut', 'date', 'data']),
+            efficiency: findIdx(['eficiencia', 'eff', 'efic'])
+        };
+
+        if (idx.tagSerial === -1 && idx.modelo === -1) {
+             throw new Error("Não foi possível identificar as colunas 'TAG/Série' ou 'Modelo'.");
+        }
+
         if (assetData.length > 0) {
             const timestamp = Date.now();
             const historyRef = child(getHistoryRef(user.uid), `${timestamp}`);
-            await set(historyRef, {
-                timestamp,
-                date: new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR'),
-                user: user.email,
-                totalAssets: assetData.length,
-                data: assetData 
-            });
-            addToast('Backup', 'Versão anterior salva no histórico.', 'success');
+            const realData = assetData.filter(d => !String(d.id).startsWith('demo-'));
+            
+            if (realData.length > 0) {
+                await set(historyRef, {
+                    timestamp,
+                    date: new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR'),
+                    user: user.email,
+                    totalAssets: realData.length,
+                    data: realData 
+                });
+                addToast('Backup', 'Versão anterior salva no histórico.', 'success');
+            }
         }
 
-        // 2. Parser
-        const separator = lines[0].includes(';') ? ';' : ',';
-        const headers = lines[0].split(separator).map(h => h.trim().toLowerCase());
-        
-        const idx = {
-            numero: headers.findIndex(h => h.includes('n') || h.includes('no') || h.includes('num')),
-            modelo: headers.findIndex(h => h.includes('modelo')),
-            qtdPlacas: headers.findIndex(h => h.includes('placas')),
-            aplicacao: headers.findIndex(h => h.includes('aplicacao')),
-            area: headers.findIndex(h => h.includes('area')),
-            tagSerial: headers.findIndex(h => h.includes('tag') || h.includes('serie')),
-            dias: headers.findIndex(h => h.includes('dias')),
-            material: headers.findIndex(h => h.includes('material')),
-            ultimaManut: headers.findIndex(h => h.includes('ultima')),
-            efficiency: headers.findIndex(h => h.includes('eficiencia') || h.includes('eficiência'))
-        };
-
-        // Prepara objeto para salvar tudo de uma vez
         const newAssetsData = {};
         
         for (let i = 1; i < lines.length; i++) {
-            const cols = lines[i].split(separator);
+            const cleanLine = lines[i].replace(/"/g, ''); 
+            const cols = cleanLine.split(separator);
             if (cols.length < 2) continue;
             
-            const rawDias = idx.dias > -1 ? parseInt(cols[idx.dias]) : 0;
+            const getVal = (index, defaultVal = '-') => {
+                if (index > -1 && cols[index]) return cols[index].trim();
+                return defaultVal;
+            };
+
+            const rawDias = parseInt(getVal(idx.dias, '0'));
             const dias = isNaN(rawDias) ? 0 : rawDias;
+            
             let status = 'operational';
             if (dias > 6) status = 'warning';
             if (dias > 8) status = 'alert';
 
             let efficiency = status === 'operational' ? 95 : status === 'warning' ? 80 : 60;
-            if (idx.efficiency > -1 && cols[idx.efficiency]) {
-                const parsedEff = parseFloat(cols[idx.efficiency].replace(',', '.').replace('%', ''));
+            const effStr = getVal(idx.efficiency, '').replace(',', '.').replace('%', '');
+            if (effStr) {
+                const parsedEff = parseFloat(effStr);
                 if (!isNaN(parsedEff)) efficiency = parsedEff;
             }
 
-            // Gera ID único
             const newKey = push(getAssetsRef(user.uid)).key;
             
             newAssetsData[newKey] = {
                 id: newKey,
-                numero: idx.numero > -1 ? (cols[idx.numero]?.trim() || i) : i,
-                modelo: idx.modelo > -1 ? (cols[idx.modelo]?.trim() || '-') : '-',
-                qtdPlacas: idx.qtdPlacas > -1 ? (cols[idx.qtdPlacas]?.trim() || '0') : '0',
-                aplicacao: idx.aplicacao > -1 ? (cols[idx.aplicacao]?.trim() || 'Geral') : 'Geral',
-                area: idx.area > -1 ? (cols[idx.area]?.trim() || 'Indefinida') : 'Indefinida',
-                tagSerial: idx.tagSerial > -1 ? (cols[idx.tagSerial]?.trim() || '-') : '-',
+                numero: getVal(idx.numero, String(i)),
+                modelo: getVal(idx.modelo, '-'),
+                qtdPlacas: getVal(idx.qtdPlacas, '0'),
+                aplicacao: getVal(idx.aplicacao, 'Geral'),
+                area: getVal(idx.area, 'Indefinida'),
+                tagSerial: getVal(idx.tagSerial, '-'),
                 dias: dias,
-                material: idx.material > -1 ? (cols[idx.material]?.trim() || 'OK') : 'OK',
-                ultimaManut: idx.ultimaManut > -1 ? (cols[idx.ultimaManut]?.trim() || '-') : '-',
+                material: getVal(idx.material, 'OK'),
+                ultimaManut: getVal(idx.ultimaManut, '-'),
                 status: status,
                 efficiency: efficiency,
                 importedAt: new Date().toISOString()
             };
         }
 
-        // 3. Substituição Total (Overwrite)
         const assetsRef = getAssetsRef(user.uid);
         await set(assetsRef, newAssetsData);
-
-        addToast('Importação', 'Novos dados carregados com sucesso!', 'success');
+        addToast('Importação', 'Planilha importada com sucesso!', 'success');
 
       } catch (e) {
-          console.error(e);
-          addToast("Erro", "Falha na importação da planilha.", "error");
+          console.error("Erro na importação:", e);
+          addToast("Erro Fatal", e.message || "Falha ao processar arquivo.", "error");
       } finally {
           setLoading(false);
       }
     };
-    reader.readAsText(file);
-    e.target.value = '';
+    
+    reader.readAsText(file); 
+    e.target.value = ''; 
   };
 
   if (loading) return <div className="h-screen flex items-center justify-center bg-slate-50 text-[#008200]"><RefreshCw className="animate-spin" /></div>;
   if (!user) return <LoginScreen onLogin={setUser} />;
 
   return (
-    <div className="flex h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden">
+    <div className="flex h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden print:overflow-visible">
+      {/* --- ESTILOS DE IMPRESSÃO --- */}
+      <style>{`
+        @media print {
+          @page { margin: 0; size: auto; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: white; }
+          body > * { display: none !important; }
+          #root, #root > div, #root > div > main { display: block !important; width: 100% !important; height: auto !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; }
+          aside, header, .print\\:hidden { display: none !important; }
+          .print\\:block { display: block !important; }
+          .print\\:shadow-none { box-shadow: none !important; }
+          .print\\:w-full { width: 100% !important; max-width: none !important; }
+          .print\\:p-0 { padding: 0 !important; }
+          .print\\:m-0 { margin: 0 !important; }
+          .print\\:max-w-none { max-width: none !important; }
+          .print\\:bg-transparent { background: transparent !important; }
+          .print\\:border-slate-300 { border-color: #cbd5e1 !important; }
+          .print\\:mb-4 { margin-bottom: 1rem !important; }
+          .print\\:p-2 { padding: 0.5rem !important; }
+          .print\\:pb-4 { padding-bottom: 1rem !important; }
+          .print\\:text-2xl { font-size: 1.5rem !important; }
+          .print\\:text-xl { font-size: 1.25rem !important; }
+          .print\\:bg-slate-200 { background-color: #e2e8f0 !important; }
+          .print\\:text-black { color: #000 !important; }
+          table { font-size: 10pt !important; width: 100% !important; }
+          th, td { padding: 4px !important; border: 1px solid #ddd !important; }
+        }
+      `}</style>
+
       <ToastContainer toasts={toasts} removeToast={removeToast} />
+      <ConfirmModal 
+        isOpen={confirmModal.isOpen} 
+        title={confirmModal.title} 
+        message={confirmModal.message} 
+        onConfirm={confirmModal.onConfirm} 
+        onCancel={() => setConfirmModal({ ...confirmModal, isOpen: false })} 
+      />
       
-      <aside className="w-20 lg:w-72 bg-[#002e12] text-white flex flex-col shadow-2xl z-30 transition-all duration-300">
+      {/* SIDEBAR - ESCONDIDA NA IMPRESSÃO */}
+      <aside className="w-20 lg:w-72 bg-[#002e12] text-white flex flex-col shadow-2xl z-30 transition-all duration-300 print:hidden">
         <div className="h-24 flex items-center px-6 border-b border-white/10 gap-4 bg-[#00250e]">
           <div className="bg-white p-2 rounded-xl shadow-lg transform hover:scale-105 transition-transform cursor-pointer">
             <Star className="text-red-600 fill-red-600" size={24} />
@@ -553,17 +775,25 @@ export default function EcoTermoEnterprise() {
                <p className="text-[10px] text-emerald-400 uppercase">Administrador</p>
              </div>
            </div>
+           
            <button onClick={() => fileInputRef.current.click()} className="w-full bg-white/10 border border-white/10 text-white py-3 rounded-lg font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-white hover:text-[#002e12] transition-all mb-3 group">
              <Upload size={16} className="group-hover:-translate-y-0.5 transition-transform" /> <span className="hidden lg:block">Importar CSV</span>
            </button>
+           
+           {/* BOTÃO EXPORTAR NO SIDEBAR */}
+           <button onClick={handleExportCSV} className="w-full bg-[#008200] border border-transparent text-white py-3 rounded-lg font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-[#006000] transition-all mb-3 group shadow-lg shadow-emerald-900/30">
+             <Download size={16} className="group-hover:translate-y-0.5 transition-transform" /> <span className="hidden lg:block">Exportar Dados</span>
+           </button>
+
            <button onClick={() => signOut(auth)} className="w-full flex items-center justify-center gap-2 text-red-400 hover:text-red-300 hover:bg-red-900/20 text-xs font-bold py-3 rounded-lg transition-colors">
              <LogOut size={16}/> <span className="hidden lg:block">Sair</span>
            </button>
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col min-w-0 bg-[#f8fafc]">
-        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-8 shadow-sm sticky top-0 z-20">
+      <main className="flex-1 flex flex-col min-w-0 bg-[#f8fafc] print:bg-white print:block">
+        {/* HEADER - ESCONDIDO NA IMPRESSÃO */}
+        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-8 shadow-sm sticky top-0 z-20 print:hidden">
            <div>
              <h2 className="text-xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
                {activeView === 'dashboard' ? <LayoutDashboard size={20} className="text-[#008200]"/> : activeView === 'history' ? <History size={20} className="text-[#008200]"/> : activeView === 'reports' ? <FileText size={20} className="text-[#008200]"/> : <Database size={20} className="text-[#008200]"/>}
@@ -592,10 +822,10 @@ export default function EcoTermoEnterprise() {
            </div>
         </header>
 
-        <div className="flex-1 overflow-auto p-8 scroll-smooth">
+        <div className="flex-1 overflow-auto p-8 scroll-smooth print:p-0 print:overflow-visible">
           
           {activeView === 'dashboard' && (
-            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 print:hidden">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <KPICard title={selectedArea === 'Todas' ? "Total Planta" : `Total ${selectedArea}`} value={stats.total} subtext="Ativos Monitorados" icon={Database} trend="neutral" color="text-blue-600" onClick={() => setActiveFilter('all')} isActive={activeFilter === 'all'}/>
                 <KPICard title="Conformidade" value={`${stats.operational}`} subtext="Equipamentos OK" icon={ShieldCheck} trend="up" color="text-[#008200]" onClick={() => setActiveFilter('operational')} isActive={activeFilter === 'operational'}/>
@@ -699,7 +929,7 @@ export default function EcoTermoEnterprise() {
           )}
 
           {activeView === 'history' && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 print:hidden">
               <div className="flex justify-between items-center mb-6">
                 <div>
                   <h2 className="text-2xl font-bold text-slate-800">Histórico de Versões</h2>
@@ -729,7 +959,7 @@ export default function EcoTermoEnterprise() {
                       </div>
                       <div className="flex gap-2">
                         {/* BOTÃO RESTAURAR */}
-                        <button onClick={() => handleRestoreHistory(hist)} className="flex items-center gap-2 px-4 py-2 bg-white border border-[#008200] text-[#008200] text-xs font-bold rounded-lg hover:bg-emerald-50 transition-colors" title="Restaurar esta versão">
+                        <button onClick={() => requestRestoreHistory(hist)} className="flex items-center gap-2 px-4 py-2 bg-white border border-[#008200] text-[#008200] text-xs font-bold rounded-lg hover:bg-emerald-50 transition-colors" title="Restaurar esta versão">
                           <RotateCcw size={16}/> Restaurar
                         </button>
                         
@@ -738,7 +968,7 @@ export default function EcoTermoEnterprise() {
                         </button>
 
                         {/* BOTÃO EXCLUIR */}
-                        <button onClick={() => handleDeleteHistory(hist.id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors ml-2" title="Apagar Backup">
+                        <button onClick={() => requestDeleteHistory(hist.id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors ml-2" title="Apagar Backup">
                           <Trash2 size={18}/>
                         </button>
                       </div>
@@ -750,11 +980,11 @@ export default function EcoTermoEnterprise() {
           )}
 
           {activeView === 'reports' && (
-            <div className="flex flex-col items-center animate-in fade-in zoom-in duration-300">
-               <div className="w-full max-w-[210mm] bg-white shadow-2xl min-h-[297mm] p-12 relative print:shadow-none print:w-full print:p-0">
-                  <div className="flex justify-between items-start border-b-2 border-[#002e12] pb-6 mb-8">
+            <div className="flex flex-col items-center animate-in fade-in zoom-in duration-300 print:block print:w-full">
+               <div className="w-full max-w-[210mm] bg-white shadow-2xl min-h-[297mm] p-12 relative print:shadow-none print:w-full print:p-0 print:m-0 print:max-w-none">
+                  <div className="flex justify-between items-start border-b-2 border-[#002e12] pb-6 mb-8 print:mb-4 print:pb-4">
                      <div>
-                       <h1 className="text-3xl font-bold text-[#002e12] uppercase tracking-tight">Relatório Técnico</h1>
+                       <h1 className="text-3xl font-bold text-[#002e12] uppercase tracking-tight print:text-2xl">Relatório Técnico</h1>
                        <p className="text-slate-500 mt-1 font-medium">Controle de Trocadores de Calor & Food Safety</p>
                      </div>
                      <div className="text-right">
@@ -763,19 +993,19 @@ export default function EcoTermoEnterprise() {
                        <p className="text-xs text-slate-400 font-mono">RESP: {user.email || 'Admin'}</p>
                      </div>
                   </div>
-                  <div className="bg-slate-50 rounded-lg p-6 mb-8 border border-slate-100">
+                  <div className="bg-slate-50 rounded-lg p-6 mb-8 border border-slate-100 print:bg-transparent print:border-slate-300 print:mb-4 print:p-2">
                     <h4 className="text-sm font-bold text-[#002e12] uppercase mb-4 border-b border-slate-200 pb-2">Resumo Executivo</h4>
                     <div className="grid grid-cols-4 gap-4 text-center">
-                       <div><span className="block text-3xl font-bold text-slate-800">{stats.total}</span><span className="text-[10px] uppercase font-bold text-slate-400">Ativos Totais</span></div>
-                       <div><span className={`block text-3xl font-bold ${stats.critical > 0 ? 'text-red-600' : 'text-slate-800'}`}>{stats.critical}</span><span className="text-[10px] uppercase font-bold text-slate-400">Pontos Críticos</span></div>
-                       <div><span className="block text-3xl font-bold text-[#008200]">100%</span><span className="text-[10px] uppercase font-bold text-slate-400">Material OK</span></div>
-                       <div><span className="block text-3xl font-bold text-blue-600">{stats.avgEff}%</span><span className="text-[10px] uppercase font-bold text-slate-400">Eficiência Média</span></div>
+                       <div><span className="block text-3xl font-bold text-slate-800 print:text-xl">{stats.total}</span><span className="text-[10px] uppercase font-bold text-slate-400">Ativos Totais</span></div>
+                       <div><span className={`block text-3xl font-bold print:text-xl ${stats.critical > 0 ? 'text-red-600' : 'text-slate-800'}`}>{stats.critical}</span><span className="text-[10px] uppercase font-bold text-slate-400">Pontos Críticos</span></div>
+                       <div><span className="block text-3xl font-bold text-[#008200] print:text-xl">100%</span><span className="text-[10px] uppercase font-bold text-slate-400">Material OK</span></div>
+                       <div><span className="block text-3xl font-bold text-blue-600 print:text-xl">{stats.avgEff}%</span><span className="text-[10px] uppercase font-bold text-slate-400">Eficiência Média</span></div>
                     </div>
                   </div>
                   <div className="mb-8">
                     <h4 className="text-sm font-bold text-[#002e12] uppercase mb-4 border-b border-slate-200 pb-2">Detalhamento Técnico</h4>
                     <table className="w-full text-xs text-left border-collapse border border-slate-300">
-                      <thead className="bg-[#002e12] text-white font-bold uppercase">
+                      <thead className="bg-[#002e12] text-white font-bold uppercase print:bg-slate-200 print:text-black">
                         <tr>
                           <th className="p-2 border border-slate-400 text-center w-10">N°</th>
                           <th className="p-2 border border-slate-400">Modelo</th>
@@ -806,12 +1036,16 @@ export default function EcoTermoEnterprise() {
                  <button onClick={() => window.print()} className="flex items-center gap-2 bg-[#002e12] text-white px-8 py-4 rounded-xl font-bold shadow-xl hover:bg-[#00451b] transition-transform hover:-translate-y-1">
                    <Printer size={20} /> IMPRIMIR PDF OFICIAL
                  </button>
+                 {/* NOVO BOTÃO EXPORTAR AQUI */}
+                 <button onClick={handleExportCSV} className="flex items-center gap-2 bg-[#008200] text-white px-8 py-4 rounded-xl font-bold shadow-xl hover:bg-[#006000] transition-transform hover:-translate-y-1">
+                   <Download size={20} /> EXPORTAR EXCEL/CSV
+                 </button>
                </div>
             </div>
           )}
 
           {activeView === 'assets' && (
-             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden animate-in fade-in duration-500 flex flex-col h-full min-h-[600px]">
+             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden animate-in fade-in duration-500 flex flex-col h-full min-h-[600px] print:hidden">
                 <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                    <div>
                      <h3 className="font-bold text-slate-800 text-lg">Base de Dados Mestra</h3>
@@ -822,6 +1056,12 @@ export default function EcoTermoEnterprise() {
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16}/>
                         <input type="text" placeholder="Filtrar por TAG..." className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-[#008200] outline-none w-64"/>
                       </div>
+                      
+                      {/* BOTÃO EXPORTAR LISTA */}
+                      <button onClick={handleExportCSV} className="bg-white border border-slate-200 text-slate-600 hover:text-[#008200] hover:border-[#008200] text-xs font-bold px-3 py-2 rounded-lg flex items-center transition-colors">
+                        <Download size={14} className="mr-2"/> Exportar Lista
+                      </button>
+
                       <span className="bg-[#008200] text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center">{assetData.length} Registros</span>
                    </div>
                 </div>
@@ -868,7 +1108,7 @@ export default function EcoTermoEnterprise() {
 
       {/* ASSET DETAILS / EDIT SLIDEOVER */}
       {selectedAsset && (
-        <div className="fixed inset-0 z-50 flex justify-end">
+        <div className="fixed inset-0 z-50 flex justify-end print:hidden">
           <div className="absolute inset-0 bg-black/20 backdrop-blur-sm transition-opacity" onClick={() => setSelectedAsset(null)}></div>
           <div className="relative w-full max-w-md bg-white h-full shadow-2xl animate-in slide-in-from-right duration-300 flex flex-col">
             <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50">
@@ -916,7 +1156,7 @@ export default function EcoTermoEnterprise() {
             </div>
 
             <div className="p-6 border-t border-slate-100 bg-slate-50 flex gap-3">
-              <button onClick={() => handleDeleteAsset(selectedAsset.id)} className="flex-1 bg-white border border-red-200 text-red-600 py-3 rounded-lg font-bold text-sm hover:bg-red-50 flex items-center justify-center gap-2 transition-colors">
+              <button onClick={() => requestDeleteAsset(selectedAsset.id)} className="flex-1 bg-white border border-red-200 text-red-600 py-3 rounded-lg font-bold text-sm hover:bg-red-50 flex items-center justify-center gap-2 transition-colors">
                 <Trash2 size={18}/> Excluir
               </button>
               <button onClick={() => handleSaveAsset(selectedAsset)} className="flex-[2] bg-[#008200] text-white py-3 rounded-lg font-bold text-sm hover:bg-[#006000] shadow-lg shadow-emerald-900/10 flex items-center justify-center gap-2 transition-colors">
@@ -929,7 +1169,7 @@ export default function EcoTermoEnterprise() {
 
       {/* COMPARE MODAL - COMPARAÇÃO LADO A LADO APRIMORADA */}
       {compareData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-300 print:hidden">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden">
             <div className="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
               <div>
